@@ -1,0 +1,1343 @@
+<!doctype html>
+<html lang="ru" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <title>CYBER_PULSE MATRIX</title>
+
+    <!-- Иконка -->
+    <link rel="icon" type="image/png" href="favicon.png" />
+
+    <!-- Иконки FontAwesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <!-- Локальный Tailwind CSS (вместо CDN) -->
+    <link rel="stylesheet" href="output.css" />
+
+    <!-- Твои кастомные стили -->
+    <link rel="stylesheet" href="style.css" />
+
+    <!-- Моментальное восстановление темы до отрисовки интерфейса -->
+    <script>
+      try {
+        const saved = localStorage.getItem("cyberPulseSettings");
+        if (saved) {
+          const settings = JSON.parse(saved);
+          if (settings && settings.theme) {
+            document.documentElement.classList.add("theme-" + settings.theme);
+            document.addEventListener("DOMContentLoaded", () => {
+              document.body.classList.remove(
+                "theme-cyan",
+                "theme-emerald",
+                "theme-pink",
+                "theme-amber",
+              );
+              document.body.classList.add("theme-" + settings.theme);
+            });
+          }
+        }
+      } catch (e) {
+        console.log("Ошибка чтения темы", e);
+      }
+    </script>
+
+    <!-- Firebase SDK (если используешь) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  </head>
+
+  <body class="h-[100dvh] flex flex-col relative select-none">
+    <!-- Фоновый Canvas и контейнер уведомлений -->
+    <canvas id="matrixCanvas"></canvas>
+    <div id="toastContainer"></div>
+
+    <!-- ================= ГЛАВНЫЙ КОНТЕЙНЕР ================= -->
+    <div class="relative z-10 flex flex-col h-full overflow-hidden">
+      <!-- ШАПКА -->
+      <header
+        class="glass-panel h-16 px-4 md:px-6 flex items-center justify-between border-b shrink-0 safe-pt"
+      >
+        <div class="flex items-center space-x-3 flex-1">
+          <div
+            class="relative flex items-center justify-center w-[40px] h-[40px] rounded-lg bg-black/40 border border-cyan-500/50 overflow-hidden shrink-0"
+          >
+            <img src="logo.png" alt="Logo" class="w-full h-full object-cover" />
+          </div>
+          <div class="flex-1 text-center">
+            <h1
+              class="text-xl font-bold tracking-wider flex items-center justify-center"
+            >
+              КИБЕР_ПУЛЬС
+            </h1>
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-1 sm:space-x-3 shrink-0">
+          <button
+            id="toggleMatrixBtn"
+            title="Toggle Matrix"
+            class="p-2 rounded-lg bg-slate-900/80 border border-slate-700 text-slate-300 hover:border-cyan-400 hover:text-cyan-400 transition-colors"
+          >
+            <i class="fas fa-terminal"></i>
+          </button>
+          <button
+            id="openVoiceStageBtn"
+            title="Voice Stage"
+            class="p-2 rounded-lg bg-slate-900/80 border border-slate-700 text-slate-300 hover:border-cyan-400 hover:text-cyan-400 transition-colors"
+          >
+            <i class="fas fa-podcast"></i>
+          </button>
+          <button
+            id="openArcadeBtn"
+            title="Arcade"
+            class="p-2 rounded-lg bg-slate-900/80 border border-slate-700 text-slate-300 hover:border-cyan-400 hover:text-cyan-400 transition-colors"
+          >
+            <i class="fas fa-gamepad"></i>
+          </button>
+          <button
+            id="openAiDrawerBtn"
+            title="Gemini AI"
+            class="p-2 rounded-lg bg-slate-900/80 border border-slate-700 text-cyan-400 hover:border-cyan-400 hover:text-cyan-400 transition-colors"
+          >
+            <i class="fas fa-brain animate-pulse"></i>
+          </button>
+          <button
+            id="openSettingsBtn"
+            title="Настройки"
+            class="hidden md:flex p-2 rounded-lg bg-slate-900/80 border border-slate-700 text-slate-300 hover:border-cyan-400 hover:text-cyan-400 transition-colors"
+          >
+            <i class="fas fa-cog"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- ЗАКРЕПЛЕННОЕ СООБЩЕНИЕ -->
+      <div
+        id="pinnedBanner"
+        class="hidden glass-panel px-4 py-2 border-b border-cyan-500/30 flex justify-between items-center text-xs text-cyan-200 bg-cyan-950/30 shrink-0"
+      >
+        <div class="flex items-center space-x-3 overflow-hidden">
+          <i class="fas fa-thumbtack text-cyan-400 animate-bounce"></i>
+          <div class="truncate cursor-pointer" id="pinnedBannerText">
+            <span id="pinnedPrefix" class="font-bold text-cyan-400"
+              >PINNED:</span
+            >
+            <span id="pinnedBannerContent"
+              >System initialization complete.</span
+            >
+          </div>
+        </div>
+        <button id="unpinBtn" class="text-slate-400 hover:text-white p-1 ml-2">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <!-- ОСНОВНАЯ РАБОЧАЯ ОБЛАСТЬ -->
+      <div class="flex-1 flex overflow-hidden relative">
+        <!-- ЛЕВАЯ ПАНЕЛЬ -->
+        <aside
+          id="appSidebar"
+          class="absolute md:relative z-20 w-full md:w-80 h-full glass-panel border-r flex flex-col transition-transform duration-300"
+        >
+          <div class="p-3 border-b border-slate-800 bg-slate-950/40 shrink-0">
+            <div
+              class="text-[11px] font-bold tracking-wider text-slate-400 mb-2 flex justify-between items-center"
+            >
+              <span id="storiesTitle">NETWORK STORIES</span>
+            </div>
+            <div
+              id="storiesContainer"
+              class="flex gap-3 overflow-x-auto pb-2 pt-1 hide-scrollbar scroll-smooth"
+            ></div>
+          </div>
+
+          <!-- ПОИСК (Исправлен type="search" и autocomplete="off") -->
+          <div class="p-3 border-b border-slate-800 shrink-0">
+            <div class="relative">
+              <i
+                class="fas fa-search absolute left-3 top-2.5 text-slate-500 text-xs"
+              ></i>
+              <input
+                type="search"
+                id="chatSearchInput"
+                name="random_search_123"
+                autocomplete="off"
+                placeholder="Поиск каналов и личных ..."
+                class="w-full bg-slate-900/90 border border-slate-700/80 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500 code-font"
+              />
+            </div>
+          </div>
+
+          <!-- ТАБЫ -->
+          <div
+            class="flex border-b border-slate-800 text-xs font-semibold text-slate-400 bg-slate-950/60 shrink-0 relative"
+          >
+            <button
+              id="tabGlobal"
+              class="flex-1 py-2 text-center border-b-2 border-cyan-400 text-cyan-400"
+            >
+              КАНАЛЫ
+            </button>
+            <button
+              id="tabDM"
+              class="flex-1 py-2 text-center border-b-2 border-transparent hover:text-slate-200"
+            >
+              ЛИЧНЫЕ
+            </button>
+            <button
+              id="addDmBtn"
+              class="absolute right-2 top-1.5 p-1 text-cyan-400 hover:text-white transition"
+              title="Начать новый диалог"
+            >
+              <i class="fas fa-plus"></i>
+            </button>
+          </div>
+
+          <div
+            id="chatList"
+            class="flex-1 overflow-y-auto divide-y divide-slate-800/40 hide-scrollbar"
+          ></div>
+
+          <div
+            class="p-3 border-t border-slate-800 bg-slate-950/80 flex items-center justify-between shrink-0 safe-pb"
+          >
+            <div class="flex items-center space-x-2.5">
+              <div class="relative">
+                <div
+                  class="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-white text-xs"
+                  id="userAvatar"
+                >
+                  OP
+                </div>
+                <span
+                  class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-black"
+                ></span>
+              </div>
+              <div>
+                <div
+                  id="userCallsign"
+                  class="text-xs font-bold text-slate-200 code-font"
+                >
+                  CALLSIGN
+                </div>
+                <div
+                  id="nodeStatus"
+                  class="text-[10px] text-emerald-400 code-font"
+                >
+                  NODE_CONNECTED
+                </div>
+              </div>
+            </div>
+            <button
+              id="copyPublicKeyBtn"
+              title="Copy Public Key"
+              class="text-slate-400 hover:text-cyan-400 p-1.5 text-xs"
+            >
+              <i class="fas fa-key"></i>
+            </button>
+          </div>
+        </aside>
+
+        <!-- ЦЕНТРАЛЬНАЯ ЧАСТЬ -->
+        <main
+          id="mainChatContainer"
+          class="hidden md:flex flex-1 flex-col bg-black/40 relative"
+        >
+          <div
+            class="h-14 border-b border-slate-800/80 px-4 md:px-6 flex items-center justify-between bg-slate-950/60 shrink-0"
+          >
+            <div class="flex items-center space-x-3">
+              <button
+                id="mobileBackBtn"
+                class="md:hidden text-cyan-400 p-2 -ml-2"
+              >
+                <i class="fas fa-arrow-left text-lg"></i>
+              </button>
+              <div
+                id="activeChatAvatar"
+                class="w-8 h-8 rounded-lg bg-cyan-950 border border-cyan-500/40 flex items-center justify-center font-bold text-cyan-400 text-sm"
+              >
+                #
+              </div>
+              <div>
+                <div class="flex items-center space-x-2">
+                  <h2
+                    id="activeChatName"
+                    class="font-bold text-slate-100 text-sm tracking-wide"
+                  >
+                    # matrix-global
+                  </h2>
+                  <span
+                    id="activeChatBadge"
+                    class="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 border border-slate-600 text-slate-300 font-mono hidden sm:inline"
+                    >LOCAL</span
+                  >
+                </div>
+                <p
+                  id="typingStatus"
+                  class="text-[11px] text-cyan-400 h-3 italic font-mono"
+                ></p>
+              </div>
+            </div>
+            <div class="flex items-center space-x-1 sm:space-x-2">
+              <button
+                id="toggleChatSearchBtn"
+                title="Search Messages"
+                class="p-2 text-slate-400 hover:text-cyan-400 text-sm"
+              >
+                <i class="fas fa-search"></i>
+              </button>
+              <button
+                id="startAudioCallBtn"
+                title="Audio Call"
+                class="p-2 text-slate-400 hover:text-emerald-400 text-sm"
+              >
+                <i class="fas fa-phone-alt"></i>
+              </button>
+              <button
+                id="startVideoCallBtn"
+                title="Video Call"
+                class="p-2 text-slate-400 hover:text-cyan-400 text-sm"
+              >
+                <i class="fas fa-video"></i>
+              </button>
+            </div>
+          </div>
+
+          <div
+            id="chatSearchBox"
+            class="hidden glass-panel px-4 py-2 border-b border-slate-800 flex items-center justify-between text-xs bg-slate-900/90 shrink-0"
+          >
+            <div class="flex items-center space-x-2 flex-1 max-w-md">
+              <i class="fas fa-search text-cyan-400"></i>
+              <input
+                type="text"
+                id="inChatSearchInput"
+                placeholder="Search content..."
+                class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-cyan-400"
+              />
+            </div>
+            <div class="flex items-center space-x-2">
+              <button
+                id="searchPrevBtn"
+                class="p-1 text-slate-400 hover:text-white"
+              >
+                <i class="fas fa-chevron-up"></i>
+              </button>
+              <button
+                id="searchNextBtn"
+                class="p-1 text-slate-400 hover:text-white"
+              >
+                <i class="fas fa-chevron-down"></i>
+              </button>
+              <span
+                id="searchResultCount"
+                class="text-slate-400 text-[11px] code-font"
+                >0</span
+              >
+              <button
+                id="closeSearchBtn"
+                class="text-slate-400 hover:text-white p-1"
+              >
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+
+          <div
+            id="messageFeed"
+            class="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 hide-scrollbar"
+          ></div>
+
+          <div id="recordingIndicator">
+            <div class="rec-dot"></div>
+            <span id="recordingTimer">00:00</span>
+            <span id="recordingTypeLabel">Recording...</span>
+            <button
+              id="stopRecordingBtn"
+              class="ml-auto px-3 py-1 rounded bg-red-600 text-white text-xs font-bold"
+            >
+              STOP
+            </button>
+          </div>
+
+          <div
+            id="attachmentPreview"
+            class="hidden p-2 bg-slate-900 border-t border-slate-800 flex items-center justify-between text-xs text-cyan-300 shrink-0"
+          >
+            <span id="attachmentName" class="truncate code-font">file.png</span>
+            <button
+              id="clearAttachmentBtn"
+              class="text-slate-400 hover:text-white"
+            >
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+
+          <!-- ИСПРАВЛЕНО: Добавлен класс hidden -->
+          <div
+            id="replyBar"
+            class="hidden p-2 bg-slate-900/90 border-t border-slate-800 items-center justify-between gap-3 shrink-0"
+          >
+            <div class="flex-1 overflow-hidden">
+              <div class="text-cyan-400 text-[10px] font-bold">
+                <span id="replyPrefix">Replying to</span>
+                <span id="replyToUser"></span>
+              </div>
+              <div
+                id="replyToText"
+                class="text-slate-300 truncate text-[11px]"
+              ></div>
+            </div>
+            <button
+              id="cancelReplyBtn"
+              class="text-slate-400 hover:text-white p-1"
+            >
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+
+          <!-- ИСПРАВЛЕНО: Опечатка safe-pb в классе -->
+          <div
+            id="composer"
+            class="p-2 md:p-4 border-t border-slate-800 bg-slate-950/90 shrink-0 safe-pb"
+          >
+            <form id="chatForm" class="flex flex-col gap-2">
+              <div
+                class="flex items-center gap-1 overflow-x-auto hide-scrollbar"
+              >
+                <label
+                  class="p-2 text-slate-400 hover:text-cyan-400 cursor-pointer shrink-0"
+                  title="Attach file"
+                >
+                  <i class="fas fa-paperclip"></i>
+                  <input
+                    type="file"
+                    id="fileInput"
+                    class="hidden"
+                    accept="image/*,video/*,audio/*,.pdf,.txt,.zip"
+                  />
+                </label>
+                <button
+                  type="button"
+                  id="voiceRecordBtn"
+                  class="p-2 text-slate-400 hover:text-emerald-400 shrink-0"
+                  title="Record voice message"
+                >
+                  <i class="fas fa-microphone"></i>
+                </button>
+                <button
+                  type="button"
+                  id="dictaphoneBtn"
+                  class="p-2 text-slate-400 hover:text-cyan-400 shrink-0 transition-colors"
+                  title="Голосовой ввод текста"
+                >
+                  <i class="fas fa-microphone-alt"></i>
+                </button>
+                <button
+                  type="button"
+                  id="videoNoteBtn"
+                  class="p-2 text-slate-400 hover:text-pink-400 shrink-0"
+                  title="Record video note"
+                >
+                  <i class="fas fa-circle-dot"></i>
+                </button>
+                <button
+                  type="button"
+                  id="emojiPickerBtn"
+                  class="p-2 text-slate-400 hover:text-amber-400 shrink-0"
+                >
+                  <i class="far fa-smile"></i>
+                </button>
+                <button
+                  type="button"
+                  id="createPollBtn"
+                  class="p-2 text-slate-400 hover:text-purple-400 shrink-0"
+                  title="Create poll"
+                >
+                  <i class="fas fa-poll-h"></i>
+                </button>
+                <button
+                  type="button"
+                  id="secretMsgBtn"
+                  class="p-2 text-slate-400 hover:text-red-500 shrink-0 transition-colors"
+                  title="Self-Destruct Message"
+                >
+                  <i class="fas fa-bomb"></i>
+                </button>
+              </div>
+
+              <div
+                id="typing-indicator"
+                class="text-xs text-cyan-400 mb-1 hidden px-2 h-4 transition-opacity"
+              ></div>
+
+              <div class="flex items-end gap-2 w-full">
+                <textarea
+                  id="messageInput"
+                  rows="1"
+                  enterkeyhint="send"
+                  placeholder="Transmit payload... (*bold*, _italic*, `code`)"
+                  autocomplete="off"
+                  class="min-w-0 flex-1 bg-slate-900/90 border border-slate-700/80 rounded-lg px-3 py-3 text-base text-slate-100 focus:outline-none focus:border-cyan-500 code-font select-text resize-none overflow-hidden leading-tight"
+                ></textarea>
+
+                <!-- ЕДИНСТВЕННАЯ КНОПКА ОТПРАВКИ -->
+                <button
+                  type="submit"
+                  id="sendBtn"
+                  class="neon-button shrink-0 w-12 h-12 rounded-lg flex items-center justify-center transition-all duration-200"
+                  title="Отправить"
+                >
+                  <i class="fas fa-paper-plane text-lg"></i>
+                </button>
+              </div>
+            </form>
+          </div>
+        </main>
+        <!-- ПРАВАЯ ПАНЕЛЬ (GEMINI AI) -->
+        <aside
+          id="aiDrawer"
+          class="hidden flex-col absolute inset-0 z-[100] w-full bg-[#0b1120] md:relative md:inset-auto md:z-auto md:w-80 md:h-full md:bg-transparent glass-panel border-l border-slate-800 transition-all duration-300"
+        >
+          <div
+            class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/60 shrink-0"
+          >
+            <div class="flex items-center space-x-2">
+              <i class="fas fa-brain text-cyan-400 animate-pulse"></i>
+              <h3
+                id="aiTitle"
+                class="font-bold text-xs tracking-wider text-slate-200"
+              >
+                GEMINI_AI COMPANION
+              </h3>
+            </div>
+            <button
+              id="closeAiDrawerBtn"
+              class="text-slate-400 hover:text-white text-xs"
+            >
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+
+          <div
+            class="p-3 bg-cyan-950/20 border-b border-cyan-500/20 text-[11px] text-cyan-300 flex justify-between items-center shrink-0"
+          >
+            <span id="aiSubtitle">AI Chat Summarizer & Cyber Assistant</span>
+            <button
+              id="summarizeChatBtn"
+              class="px-2 py-0.5 rounded bg-cyan-600 text-black font-bold text-[10px]"
+            >
+              SUMMARIZE
+            </button>
+          </div>
+
+          <div
+            id="aiFeed"
+            class="flex-1 overflow-y-auto p-4 space-y-3 text-xs hide-scrollbar"
+          >
+            <div
+              class="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 text-slate-300"
+            >
+              <span class="text-cyan-400 font-bold block mb-1">GEMINI_AI:</span>
+              Greetings Operator. Введи Gemini API key в настройках, чтобы я
+              начал отвечать по-настоящему.
+            </div>
+          </div>
+
+          <div class="p-3 border-t border-slate-800 bg-slate-950 shrink-0">
+            <form id="aiForm" class="flex space-x-2">
+              <input
+                type="text"
+                id="aiInput"
+                placeholder="Query Gemini AI..."
+                class="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-400 code-font"
+              />
+              <button
+                type="submit"
+                id="aiAskBtn"
+                class="px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-500 text-black font-bold text-xs"
+              >
+                ASK
+              </button>
+            </form>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <!-- ================= МОДАЛЬНЫЕ ОКНА ================= -->
+
+    <!-- 1. Кастомные Эмодзи (твоя сетка) -->
+    <div
+      id="emojiModal"
+      class="hidden absolute bottom-16 left-4 md:left-12 z-[200] w-64 glass-panel rounded-xl p-3 shadow-2xl border border-cyan-500/30"
+    >
+      <div
+        class="flex justify-between items-center border-b border-slate-800 pb-1 mb-2 text-xs font-bold text-slate-300"
+      >
+        <span>CYBER EMOJIS</span>
+        <button id="closeEmojiBtn" class="text-slate-400">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="grid grid-cols-5 gap-2 text-lg text-center cursor-pointer">
+        <span data-emoji="⚡">⚡</span><span data-emoji="☣️">☣️</span
+        ><span data-emoji="🛡️">🛡️</span> <span data-emoji="👾">👾</span
+        ><span data-emoji="💀">💀</span><span data-emoji="🚀">🚀</span>
+        <span data-emoji="🔥">🔥</span><span data-emoji="🤖">🤖</span
+        ><span data-emoji="🌐">🌐</span> <span data-emoji="🔒">🔒</span
+        ><span data-emoji="👍">👍</span><span data-emoji="❤️">❤️</span>
+        <span data-emoji="😂">😂</span><span data-emoji="👀">👀</span
+        ><span data-emoji="🎯">🎯</span>
+      </div>
+    </div>
+
+    <!-- 2. Большой Emoji Picker (Библиотека) -->
+    <emoji-picker
+      class="dark hidden"
+      style="
+        position: fixed;
+        bottom: 80px;
+        right: 20px;
+        z-index: 9999;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        border: 1px solid #22d3ee;
+        border-radius: 8px;
+      "
+    ></emoji-picker>
+
+    <!-- 3. Poll Modal (Опрос) -->
+    <div
+      id="pollModal"
+      class="hidden fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4"
+    >
+      <div
+        class="w-full max-w-md glass-panel p-6 rounded-xl border border-cyan-500/40 space-y-4"
+      >
+        <h3 class="text-base font-bold text-cyan-400 flex items-center gap-2">
+          <i class="fas fa-poll-h"></i>
+          <span id="pollTitle">CREATE MATRIX VOTING POLL</span>
+        </h3>
+        <input
+          type="text"
+          id="pollQuestion"
+          placeholder="Enter poll question..."
+          class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-400"
+        />
+        <input
+          type="text"
+          id="pollOpt1"
+          placeholder="Option 1"
+          class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-slate-200"
+        />
+        <input
+          type="text"
+          id="pollOpt2"
+          placeholder="Option 2"
+          class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-slate-200"
+        />
+        <div class="flex justify-end space-x-2 pt-2">
+          <button
+            id="cancelPollBtn"
+            class="px-4 py-1.5 rounded bg-slate-800 text-slate-300 text-xs"
+          >
+            Cancel
+          </button>
+          <button
+            id="submitPollBtn"
+            class="neon-button px-4 py-1.5 rounded text-xs font-bold"
+          >
+            LAUNCH POLL
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. МОДАЛКА ВХОДЯЩЕГО ЗВОНКА (Вынесена наружу!) -->
+    <div
+      id="incomingCallModal"
+      class="hidden fixed top-10 left-1/2 transform -translate-x-1/2 bg-slate-900 border border-cyan-500 p-6 rounded-xl text-center shadow-[0_0_20px_rgba(6,182,212,0.4)] z-[1000] w-[90%] max-w-sm"
+    >
+      <h3 class="text-cyan-400 font-bold mb-2">Входящий звонок</h3>
+      <p class="text-white mb-4">
+        Звонит: <span id="callerName" class="font-bold text-pink-400"></span>
+      </p>
+      <div class="flex gap-4 justify-center">
+        <button
+          onclick="acceptCall()"
+          class="bg-green-500 hover:bg-green-400 text-black px-4 py-2 rounded-full font-bold transition"
+        >
+          <i class="fas fa-phone"></i> Принять
+        </button>
+        <button
+          onclick="declineCall()"
+          class="bg-red-500 hover:bg-red-400 text-white px-4 py-2 rounded-full font-bold transition"
+        >
+          <i class="fas fa-phone-slash"></i> Отклонить
+        </button>
+      </div>
+    </div>
+
+    <!-- 5. ОСНОВНОЕ ОКНО ЗВОНКА -->
+    <div
+      id="callOverlay"
+      class="fixed inset-0 z-[999] bg-black/90 backdrop-blur-md hidden flex-col items-center justify-center p-4"
+    >
+      <div
+        id="videoCallContainer"
+        class="relative w-full max-w-4xl h-[60vh] bg-black rounded-xl overflow-hidden border border-slate-700 hidden"
+      >
+        <video
+          id="remote-video"
+          autoplay
+          playsinline
+          class="w-full h-full object-cover"
+        ></video>
+        <div
+          class="absolute bottom-4 right-4 w-1/4 max-w-[150px] aspect-[3/4] bg-slate-800 rounded-lg overflow-hidden border-2 border-cyan-500 shadow-lg"
+        >
+          <video
+            id="local-video"
+            autoplay
+            playsinline
+            muted
+            class="w-full h-full object-cover"
+          ></video>
+        </div>
+      </div>
+
+      <div
+        id="audioCallContainer"
+        class="w-full max-w-sm h-[60vh] bg-slate-900 rounded-xl border border-slate-700 flex-col items-center justify-center hidden"
+      >
+        <div
+          class="w-32 h-32 rounded-full bg-slate-800 border-2 border-cyan-500 flex items-center justify-center text-5xl text-cyan-400 mb-6 shadow-[0_0_20px_rgba(6,182,212,0.3)]"
+        >
+          <i class="fas fa-user"></i>
+        </div>
+        <h2 class="text-white text-2xl font-bold mb-2" id="audioCallName">
+          Собеседник
+        </h2>
+        <p class="text-cyan-400 animate-pulse">Соединение...</p>
+      </div>
+
+      <div class="mt-6 flex gap-3 items-center">
+        <button
+          id="toggleAudioBtn"
+          class="bg-slate-800 hover:bg-slate-700 text-white w-12 h-12 rounded-full flex items-center justify-center transition border border-slate-600"
+        >
+          <i class="fas fa-microphone"></i>
+        </button>
+        <button
+          id="toggleVideoBtn"
+          class="bg-slate-800 hover:bg-slate-700 text-white w-12 h-12 rounded-full flex items-center justify-center transition border border-slate-600"
+        >
+          <i class="fas fa-video"></i>
+        </button>
+        <button
+          id="endCallBtn"
+          class="bg-red-600 hover:bg-red-500 text-white w-14 h-14 rounded-full flex items-center justify-center text-xl transition shadow-[0_0_15px_rgba(220,38,38,0.6)] ml-2"
+        >
+          <i class="fas fa-phone-slash"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- 6. Voice Stage Modal -->
+    <div
+      id="voiceStageModal"
+      class="hidden fixed inset-0 z-[200] flex items-center justify-center bg-black/85 p-4"
+    >
+      <div
+        class="w-full max-w-xl glass-panel rounded-2xl p-6 border border-emerald-500/50 space-y-6"
+      >
+        <div
+          class="flex justify-between items-center border-b border-slate-800 pb-3"
+        >
+          <div>
+            <h3
+              class="text-base font-bold text-emerald-400 flex items-center gap-2"
+            >
+              <i class="fas fa-podcast"></i> MATRIX VOICE ROOM STAGE
+            </h3>
+            <p class="text-xs text-slate-400">
+              Local audio stage (mesh requires signaling)
+            </p>
+          </div>
+          <button
+            id="closeVoiceStageBtn"
+            class="text-slate-400 hover:text-white"
+          >
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div
+          id="stageSpeakers"
+          class="grid grid-cols-3 gap-4 text-center"
+        ></div>
+        <div class="flex justify-between items-center pt-2">
+          <button
+            id="raiseHandBtn"
+            class="px-3 py-1.5 rounded bg-slate-800 text-slate-300 text-xs hover:text-white"
+          >
+            <i class="fas fa-hand"></i> Raise Hand
+          </button>
+          <button
+            id="joinStageBtn"
+            class="neon-button px-4 py-1.5 rounded text-xs font-bold"
+          >
+            JOIN STAGE
+          </button>
+          <button
+            id="leaveStageBtn"
+            class="hidden px-3 py-1.5 rounded bg-red-700 text-white text-xs"
+          >
+            LEAVE
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. Arcade Modal -->
+    <div
+      id="arcadeModal"
+      class="hidden fixed inset-0 z-[200] flex items-center justify-center bg-black/90 p-4"
+    >
+      <div
+        class="w-full max-w-3xl glass-panel rounded-2xl p-4 border border-amber-500/50 flex flex-col h-[550px]"
+      >
+        <div
+          class="flex justify-between items-center border-b border-slate-800 pb-2 mb-2"
+        >
+          <h3 class="text-sm font-bold text-amber-400 flex items-center gap-2">
+            <i class="fas fa-gamepad"></i> PAC-MAN MATRIX ARCADE
+          </h3>
+          <button id="closeArcadeBtn" class="text-slate-400 hover:text-white">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="flex-1 bg-black rounded-xl overflow-hidden">
+          <iframe
+            src="https://macek.github.io/google_pacman/"
+            class="w-full h-full border-0"
+            allow="autoplay"
+          ></iframe>
+        </div>
+      </div>
+    </div>
+
+    <!-- 8. Video Note Modal -->
+    <div
+      id="videoNoteModal"
+      class="hidden fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4"
+    >
+      <div
+        class="glass-panel p-6 rounded-2xl border border-pink-500/50 flex flex-col items-center space-y-4"
+      >
+        <h3 class="text-xs font-bold text-pink-400 tracking-wider">
+          RECORD CIRCULAR VIDEO NOTE
+        </h3>
+        <div
+          class="w-[180px] h-[180px] rounded-full overflow-hidden border-3 border-pink-500 relative bg-black shadow-[0_0_15px_rgba(255,0,127,0.4)]"
+        >
+          <video
+            id="videoNotePreview"
+            autoplay
+            muted
+            playsinline
+            class="w-full h-full object-cover"
+          ></video>
+        </div>
+        <div class="flex items-center space-x-3">
+          <button
+            id="startVidRecordBtn"
+            class="px-4 py-1.5 rounded bg-pink-600 hover:bg-pink-500 text-white font-bold text-xs"
+          >
+            RECORD
+          </button>
+          <button
+            id="stopVidRecordBtn"
+            class="px-4 py-1.5 rounded bg-slate-800 text-slate-300 text-xs"
+          >
+            CANCEL
+          </button>
+        </div>
+        <p class="text-[10px] text-slate-500">Max 60 seconds</p>
+      </div>
+    </div>
+
+    <!-- 9. Story Viewer Modal -->
+    <div
+      id="storyViewerModal"
+      class="hidden fixed inset-0 z-[200] flex items-center justify-center bg-black/95 p-4"
+    >
+      <div
+        class="relative w-full max-w-sm glass-panel rounded-2xl overflow-hidden border border-cyan-500/40 flex flex-col h-[500px]"
+      >
+        <div class="w-full bg-slate-800 h-1 flex gap-0.5 px-1 pt-1">
+          <div id="storyProgressBars" class="flex w-full gap-0.5"></div>
+        </div>
+        <div
+          class="p-3 flex justify-between items-center text-xs text-slate-200"
+        >
+          <span id="storyAuthor" class="font-bold">Author</span>
+          <button id="closeStoryBtn" class="text-slate-400 hover:text-white">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div
+          class="flex-1 bg-black relative flex items-center justify-center overflow-hidden"
+          id="storyContentArea"
+        >
+          <img
+            id="storyImage"
+            src=""
+            class="w-full h-full object-cover hidden"
+          />
+          <video
+            id="storyVideo"
+            class="w-full h-full object-cover hidden"
+            playsinline
+          ></video>
+        </div>
+        <div class="absolute inset-y-0 left-0 w-1/3" id="storyPrevZone"></div>
+        <div class="absolute inset-y-0 right-0 w-1/3" id="storyNextZone"></div>
+      </div>
+    </div>
+
+    <!-- 10. Settings Modal -->
+    <div
+      id="settingsModal"
+      class="hidden fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/80 p-0 sm:p-4"
+    >
+      <div
+        class="w-full max-w-md glass-panel rounded-t-2xl sm:rounded-2xl border border-cyan-500/40 max-h-[92vh] flex flex-col"
+      >
+        <div
+          class="flex justify-between items-center border-b border-slate-800 px-4 py-3 shrink-0 bg-[#0d111c]"
+        >
+          <h3
+            id="settingsTitle"
+            class="text-sm font-bold text-cyan-400 flex items-center gap-2"
+          >
+            <i class="fas fa-sliders-h"></i>
+            <span id="settingsTitleText">MATRIX NODE CONFIGURATION</span>
+          </h3>
+          <button
+            id="closeSettingsBtn"
+            type="button"
+            class="w-11 h-11 rounded-lg border border-slate-600 text-slate-200 text-lg flex items-center justify-center"
+            aria-label="Close"
+          >
+            <i class="fas fa-times pointer-events-none"></i>
+          </button>
+        </div>
+        <div class="p-4 space-y-5 overflow-y-auto hide-scrollbar">
+          <div>
+            <label
+              id="labelDisplayName"
+              class="text-xs text-slate-400 font-bold block mb-1"
+              >DISPLAY NAME</label
+            ><input
+              type="text"
+              id="settingsDisplayName"
+              class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-slate-200"
+              placeholder="Operator_XXX"
+            />
+          </div>
+          <div>
+            <label class="text-xs text-slate-400 font-bold block mb-1"
+              >INTERFACE LANGUAGE</label
+            ><select
+              id="settingsLanguage"
+              class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-slate-200"
+            >
+              <option value="ru">Русский</option>
+              <option value="en">English</option>
+              <option value="uk">Українська</option>
+              <option value="de">Deutsch</option>
+            </select>
+          </div>
+          <div>
+            <label
+              id="labelTheme"
+              class="text-xs text-slate-400 font-bold block mb-2"
+              >NEON COLOR THEME</label
+            >
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <button
+                data-theme="cyan"
+                class="theme-btn p-2 rounded bg-slate-900 border border-cyan-400 text-cyan-400 font-bold"
+              >
+                CYAN NEON</button
+              ><button
+                data-theme="emerald"
+                class="theme-btn p-2 rounded bg-slate-900 border border-emerald-400 text-emerald-400 font-bold"
+              >
+                MATRIX EMERALD</button
+              ><button
+                data-theme="pink"
+                class="theme-btn p-2 rounded bg-slate-900 border border-pink-400 text-pink-400 font-bold"
+              >
+                SYNTH PINK</button
+              ><button
+                data-theme="amber"
+                class="theme-btn p-2 rounded bg-slate-900 border border-amber-400 text-amber-400 font-bold"
+              >
+                SOLAR AMBER
+              </button>
+            </div>
+          </div>
+          <div class="pt-2 border-t border-slate-800">
+            <label class="text-xs text-slate-400 font-bold block mb-2"
+              >ОБОИ ДЛЯ ЧАТА</label
+            >
+            <div class="flex gap-2">
+              <label
+                class="flex-1 p-2 rounded bg-slate-900 border border-slate-600 text-slate-300 text-xs text-center cursor-pointer hover:border-cyan-400 transition"
+                ><i class="fas fa-image mr-1"></i> Загрузить фото<input
+                  type="file"
+                  id="bgUploadInput"
+                  class="hidden"
+                  accept="image/*" /></label
+              ><button
+                id="resetBgBtn"
+                class="px-3 py-2 rounded bg-slate-900 border border-red-500/50 text-red-400 text-xs hover:bg-red-500/10 transition"
+                title="Сбросить обои"
+              >
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+          <div class="space-y-2 pt-2 border-t border-slate-800">
+            <label
+              class="flex items-center justify-between text-xs text-slate-300"
+              ><span id="labelMatrix">Matrix Rain</span
+              ><input
+                type="checkbox"
+                id="settingsMatrixRain"
+                class="accent-cyan-500"
+                checked
+            /></label>
+            <label
+              class="flex items-center justify-between text-xs text-slate-300"
+              ><span id="labelMotion">Reduced Motion</span
+              ><input
+                type="checkbox"
+                id="settingsReducedMotion"
+                class="accent-cyan-500"
+            /></label>
+            <label
+              class="flex items-center justify-between text-xs text-slate-300"
+              ><span id="labelSounds">Sound Effects</span
+              ><input
+                type="checkbox"
+                id="settingsSounds"
+                class="accent-cyan-500"
+                checked
+            /></label>
+          </div>
+          <div class="pt-2 border-t border-slate-800">
+            <label
+              id="labelGemini"
+              class="text-xs text-slate-400 font-bold block mb-1"
+              >GEMINI API KEY</label
+            ><input
+              type="password"
+              id="settingsGeminiKey"
+              class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-slate-200 code-font"
+              placeholder="AIzaSy..."
+            />
+            <p id="geminiHint" class="text-[10px] text-slate-500 mt-1">
+              Хранится только в localStorage. Получить:
+              <a
+                href="https://aistudio.google.com/app/apikey"
+                target="_blank"
+                class="text-cyan-400"
+                >aistudio.google.com</a
+              >
+            </p>
+          </div>
+          <div class="pt-2 border-t border-slate-800">
+            <label
+              id="labelCrypto"
+              class="text-xs text-slate-400 font-bold block mb-1"
+              >CRYPTO (obfuscation)</label
+            ><button
+              id="regenKeysBtn"
+              class="w-full p-2 rounded bg-slate-900 border border-red-500/50 text-red-400 text-xs font-mono"
+            >
+              REGENERATE KEY PAIR
+            </button>
+          </div>
+          <div class="pt-2 border-t border-slate-800 space-y-2">
+            <button
+              id="exportChatsBtn"
+              class="w-full p-2 rounded bg-slate-900 border border-slate-600 text-slate-300 text-xs"
+            >
+              Export chats (JSON)
+            </button>
+            <button
+              id="logoutBtn"
+              class="w-full p-2 rounded bg-slate-900 border border-red-500/50 text-red-400 text-xs font-bold hover:bg-red-500/10 transition"
+            >
+              ВЫЙТИ ИЗ СИСТЕМЫ
+            </button>
+            <button
+              id="clearAllDataBtn"
+              class="w-full p-2 rounded bg-slate-900 border border-red-500/50 text-red-400 text-xs"
+            >
+              Clear all data
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 11. Context Menu -->
+    <div
+      id="contextMenu"
+      class="hidden absolute z-[300] w-44 glass-panel rounded-lg py-1 shadow-2xl border border-cyan-500/40 text-xs font-semibold text-slate-200"
+    >
+      <button
+        data-action="reply"
+        class="w-full text-left px-3 py-2 hover:bg-cyan-500/20 hover:text-cyan-300"
+      >
+        <i class="fas fa-reply mr-2"></i><span id="ctxReply">Reply</span>
+      </button>
+      <button
+        data-action="react"
+        class="w-full text-left px-3 py-2 hover:bg-cyan-500/20 hover:text-cyan-300"
+      >
+        <i class="fas fa-smile mr-2"></i><span id="ctxReact">React</span>
+      </button>
+      <button
+        data-action="pin"
+        class="w-full text-left px-3 py-2 hover:bg-cyan-500/20 hover:text-cyan-300"
+      >
+        <i class="fas fa-thumbtack mr-2"></i><span id="ctxPin">Pin</span>
+      </button>
+      <button
+        data-action="copy"
+        class="w-full text-left px-3 py-2 hover:bg-cyan-500/20 hover:text-cyan-300"
+      >
+        <i class="fas fa-copy mr-2"></i><span id="ctxCopy">Copy</span>
+      </button>
+      <button
+        data-action="forward"
+        class="w-full text-left px-3 py-2 hover:bg-cyan-500/20 hover:text-cyan-300"
+      >
+        <i class="fas fa-share mr-2"></i><span id="ctxForward">Forward</span>
+      </button>
+      <button
+        data-action="delete"
+        class="w-full text-left px-3 py-2 hover:bg-red-500/20 hover:text-red-400 border-t border-slate-800"
+      >
+        <i class="fas fa-trash mr-2"></i><span id="ctxDelete">Delete</span>
+      </button>
+    </div>
+
+    <!-- 12. Quick React Panel -->
+    <div
+      id="quickReactPanel"
+      class="hidden absolute z-[300] glass-panel rounded-full px-2 py-1 flex gap-1 shadow-xl border border-cyan-500/30"
+    >
+      <button data-emoji="👍" class="text-lg hover:scale-125 transition p-1">
+        👍
+      </button>
+      <button data-emoji="🔥" class="text-lg hover:scale-125 transition p-1">
+        🔥
+      </button>
+      <button data-emoji="⚡" class="text-lg hover:scale-125 transition p-1">
+        ⚡
+      </button>
+      <button data-emoji="💀" class="text-lg hover:scale-125 transition p-1">
+        💀
+      </button>
+      <button data-emoji="❤️" class="text-lg hover:scale-125 transition p-1">
+        ❤️
+      </button>
+    </div>
+
+    <!-- 13. Media Viewer -->
+    <div
+      id="mediaViewer"
+      class="hidden fixed inset-0 z-[300] bg-black/95 flex items-center justify-center p-4"
+    >
+      <button
+        id="closeMediaViewer"
+        class="absolute top-4 right-4 text-white text-2xl"
+      >
+        <i class="fas fa-times"></i>
+      </button>
+      <img
+        id="mediaViewerImg"
+        class="max-w-full max-h-full hidden rounded-lg"
+      />
+      <video
+        id="mediaViewerVideo"
+        class="max-w-full max-h-full hidden rounded-lg"
+        controls
+      ></video>
+    </div>
+
+    <!-- 14. Forward Modal -->
+    <div
+      id="forwardModal"
+      class="hidden fixed inset-0 z-[300] flex items-center justify-center bg-black/80 p-4"
+    >
+      <div
+        class="w-full max-w-sm glass-panel p-5 rounded-xl border border-cyan-500/40 space-y-3"
+      >
+        <h3 id="forwardTitle" class="text-sm font-bold text-cyan-400">
+          Forward to...
+        </h3>
+        <div
+          id="forwardChatList"
+          class="max-h-60 overflow-y-auto space-y-1 hide-scrollbar"
+        ></div>
+        <button
+          id="cancelForwardBtn"
+          class="w-full py-1.5 rounded bg-slate-800 text-slate-300 text-xs"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+
+    <!-- ================= МОБИЛЬНОЕ НИЖНЕЕ МЕНЮ ================= -->
+    <nav
+      class="h-14 bg-[#17212b] border-t border-[#0e1621] flex justify-around items-center z-40 shrink-0 md:hidden safe-pb"
+    >
+      <button
+        class="nav-btn flex flex-col items-center justify-center w-full h-full text-[#00f0ff]"
+        data-target="viewChats"
+      >
+        <i class="fas fa-comment-alt text-lg mb-0.5"></i
+        ><span class="text-[10px] font-medium">Чаты</span>
+      </button>
+      <button
+        class="nav-btn flex flex-col items-center justify-center w-full h-full text-[#708499]"
+        data-target="viewCalls"
+      >
+        <i class="fas fa-phone-alt text-lg mb-0.5"></i
+        ><span class="text-[10px] font-medium">Звонки</span>
+      </button>
+      <button
+        class="nav-btn flex flex-col items-center justify-center w-full h-full text-[#708499]"
+        data-target="viewSettings"
+      >
+        <i class="fas fa-cog text-lg mb-0.5"></i
+        ><span class="text-[10px] font-medium">Настройки</span>
+      </button>
+    </nav>
+
+    <!-- ================= ОВЕРЛЕЙ АВТОРИЗАЦИИ ================= -->
+    <div
+      id="auth-screen"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-sm"
+    >
+      <div
+        class="w-11/12 max-w-md p-8 bg-slate-900 border border-cyan-800 rounded-xl shadow-[0_0_30px_rgba(34,211,238,0.15)] relative overflow-hidden"
+      >
+        <div
+          class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-cyan-500"
+        ></div>
+        <div class="text-center mb-8">
+          <h2
+            class="text-3xl font-bold text-cyan-400 tracking-widest mb-2 font-mono"
+          >
+            КИБЕР_ПУЛЬС
+          </h2>
+          <p id="auth-subtitle" class="text-slate-400 text-sm">
+            Авторизация в сети
+          </p>
+        </div>
+        <form id="auth-form" class="space-y-4">
+          <div>
+            <label
+              class="block text-cyan-500 text-xs font-bold mb-1 uppercase tracking-wider"
+              >Позывной (Логин)</label
+            ><input
+              type="text"
+              id="auth-username"
+              required
+              class="w-full bg-slate-950 border border-slate-700 text-cyan-100 rounded p-3 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all font-mono"
+              placeholder="Operator_276"
+            />
+          </div>
+          <div>
+            <label
+              class="block text-cyan-500 text-xs font-bold mb-1 uppercase tracking-wider"
+              >Код доступа (Пароль)</label
+            ><input
+              type="password"
+              id="auth-password"
+              required
+              class="w-full bg-slate-950 border border-slate-700 text-cyan-100 rounded p-3 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all font-mono"
+              placeholder="••••••••"
+            />
+          </div>
+          <div
+            id="auth-error"
+            class="hidden text-red-500 text-sm text-center bg-red-500/10 p-2 rounded border border-red-500/30"
+          ></div>
+          <button
+            type="submit"
+            id="auth-submit-btn"
+            class="w-full bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold py-3 px-4 rounded transition-all shadow-[0_0_15px_rgba(8,145,178,0.5)] mt-6"
+          >
+            ВОЙТИ В СИСТЕМУ
+          </button>
+        </form>
+        <div class="mt-6 text-center">
+          <button
+            type="button"
+            id="auth-toggle-btn"
+            class="text-sm text-slate-400 hover:text-cyan-400 transition-colors"
+          >
+            Нет доступа?
+            <span
+              class="font-bold underline decoration-cyan-500 underline-offset-4"
+              >Запросить регистрацию</span
+            >
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= ПОДКЛЮЧЕНИЕ СКРИПТОВ ================= -->
+    <script src="crypto.js"></script>
+    <script src="media.js"></script>
+    <script src="settings.js"></script>
+    <script src="sound.js"></script>
+    <script src="matrix.js"></script>
+    <script src="calls.js"></script>
+    <script src="gemini.js"></script>
+
+    <!-- Модули -->
+    <script src="utils.js"></script>
+    <script src="notifications.js"></script>
+    <script src="ui.js"></script>
+    <script src="auth.js"></script>
+    <script src="socket.js?v=4"></script>
+
+    <!-- Библиотека эмодзи -->
+    <script
+      type="module"
+      src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"
+    ></script>
+
+    <!-- Главные скрипты -->
+    <script src="script.js"></script>
+    <script src="stories.js"></script>
+  </body>
+</html>

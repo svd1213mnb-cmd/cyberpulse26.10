@@ -1,0 +1,923 @@
+@import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Rajdhani:wght@500;600;700&display=swap");
+
+/* Сброс и базовые стили */
+body {
+  font-family:
+    "Rajdhani",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  background-color: #05060a;
+  color: #e2e8f0;
+  overflow: hidden;
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.code-font {
+  font-family: "Fira Code", monospace;
+}
+
+/* Цветовые темы */
+:root {
+  --primary-neon: #00f0ff;
+  --primary-glow: rgba(0, 240, 255, 0.4);
+  --bg-glass: rgba(13, 17, 28, 0.85);
+  --border-neon: rgba(0, 240, 255, 0.25);
+  --bg-main: #05060a;
+  --input-bg: rgba(15, 23, 42, 0.9);
+}
+
+.theme-emerald {
+  --primary-neon: #10b981;
+  --primary-glow: rgba(16, 185, 129, 0.4);
+  --border-neon: rgba(16, 185, 129, 0.25);
+  --bg-glass: rgba(6, 28, 16, 0.85);
+  --bg-main: #041208;
+  --input-bg: rgba(10, 46, 27, 0.9);
+}
+
+.theme-pink {
+  --primary-neon: #ff007f;
+  --primary-glow: rgba(255, 0, 127, 0.4);
+  --border-neon: rgba(255, 0, 127, 0.25);
+  --bg-glass: rgba(28, 6, 18, 0.85);
+  --bg-main: #12040b;
+  --input-bg: rgba(46, 10, 30, 0.9);
+}
+
+.theme-amber {
+  --primary-neon: #f59e0b;
+  --primary-glow: rgba(245, 158, 11, 0.4);
+  --border-neon: rgba(245, 158, 11, 0.25);
+  --bg-glass: rgba(28, 20, 6, 0.85);
+  --bg-main: #120d04;
+  --input-bg: rgba(46, 32, 10, 0.9);
+}
+
+/* ПРИМЕНЯЕМ ФОНЫ К ПАНЕЛЯМ (перебиваем Tailwind) */
+body {
+  background-color: var(--bg-main) !important;
+  transition: background-color 0.3s;
+}
+
+/* Красим основные блоки интерфейса */
+header,
+#appSidebar,
+#mainChatContainer,
+#aiDrawer,
+#composer,
+#chatSearchBox,
+.glass-panel {
+  background-color: var(--bg-glass) !important;
+  border-color: var(--border-neon) !important;
+}
+
+/* Красим поля ввода и поиска */
+input[type="text"],
+input[type="password"],
+select,
+#messageInput,
+#aiInput,
+#chatSearchInput {
+  background-color: var(--input-bg) !important;
+  border-color: var(--border-neon) !important;
+  color: #fff !important;
+}
+
+.theme-emerald input,
+.theme-emerald select {
+  background-color: #0a1a13 !important;
+  border-color: #14532d !important;
+  color: #d1fae5 !important;
+}
+
+.theme-pink input,
+.theme-pink select {
+  background-color: #1a0a13 !important;
+  border-color: #831843 !important;
+  color: #fbcfe8 !important;
+}
+
+.theme-amber input,
+.theme-amber select {
+  background-color: #1a140a !important;
+  border-color: #78350f !important;
+  color: #fde68a !important;
+}
+
+.theme-emerald {
+  --primary-neon: #10b981;
+  --primary-glow: rgba(16, 185, 129, 0.4);
+  --border-neon: rgba(16, 185, 129, 0.25);
+}
+
+.theme-pink {
+  --primary-neon: #ff007f;
+  --primary-glow: rgba(255, 0, 127, 0.4);
+  --border-neon: rgba(255, 0, 127, 0.25);
+}
+
+.theme-amber {
+  --primary-neon: #f59e0b;
+  --primary-glow: rgba(245, 158, 11, 0.4);
+  --border-neon: rgba(245, 158, 11, 0.25);
+}
+
+/* Glassmorphism */
+.glass-panel {
+  background: var(--bg-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-neon);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+}
+
+/* Неоновые элементы */
+.neon-text {
+  color: var(--primary-neon);
+  text-shadow: 0 0 10px var(--primary-glow);
+}
+
+.neon-button {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--primary-neon);
+  color: var(--primary-neon);
+  transition: all 0.2s;
+}
+
+.neon-button:hover {
+  background: var(--primary-neon);
+  color: #000;
+  box-shadow: 0 0 15px var(--primary-glow);
+}
+
+/* Матрица на фоне */
+#matrixCanvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 1;
+}
+
+/* Скроллбары */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(5, 6, 10, 0.8);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-neon);
+  border-radius: 2px;
+}
+
+/* Безопасные зоны для iPhone (чтобы меню не перекрывалось) */
+.safe-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-pt {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Отключение анимаций */
+.reduced-motion * {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* Уведомления (Тосты) */
+#toastContainer {
+  position: fixed;
+  top: 80px;
+  right: 16px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  min-width: 260px;
+  max-width: 360px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(15, 17, 26, 0.95);
+  border: 1px solid var(--border-neon);
+  color: #e2e8f0;
+  font-size: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  animation: toastIn 0.25s ease-out;
+}
+
+.toast.error {
+  border-color: #ef4444;
+}
+
+.toast.success {
+  border-color: #10b981;
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Пузыри сообщений (Базовые и мобильные) */
+.msg-bubble {
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  position: relative;
+  word-wrap: break-word;
+  transition: background 0.2s;
+}
+
+.msg-bubble-self {
+  background: linear-gradient(
+    135deg,
+    rgba(0, 240, 255, 0.25),
+    rgba(59, 130, 246, 0.35)
+  );
+  border: 1px solid var(--primary-neon);
+  box-shadow: 0 0 16px var(--primary-glow);
+  border-bottom-right-radius: 4px;
+}
+
+.msg-bubble-other {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-bottom-left-radius: 4px;
+}
+
+/* Мобильные пузыри (упрощенные) */
+@media (max-width: 768px) {
+  .msg-bubble-self {
+    background: #2b5278;
+    border: none;
+    box-shadow: none;
+    border-radius: 16px;
+    border-bottom-right-radius: 4px;
+  }
+
+  .msg-bubble-other {
+    background: #182533;
+    border: none;
+    box-shadow: none;
+    border-radius: 16px;
+    border-bottom-left-radius: 4px;
+  }
+}
+
+/* Медиа в сообщениях */
+.msg-media img,
+.msg-media video {
+  max-width: 280px;
+  max-height: 240px;
+  border-radius: 12px;
+  cursor: pointer;
+  border: 1px solid var(--border-neon);
+  box-shadow: 0 0 12px var(--primary-glow);
+}
+
+.msg-media audio {
+  width: 240px;
+  height: 40px;
+  border-radius: 20px;
+  filter: drop-shadow(0 0 6px var(--primary-glow));
+}
+
+/* Кастомный аудио-плеер */
+.custom-audio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid var(--border-neon);
+  border-radius: 20px;
+  padding: 4px 12px;
+  width: 200px;
+}
+
+.custom-audio button {
+  color: var(--primary-neon);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.custom-audio .progress-track {
+  flex: 1;
+  height: 4px;
+  background: #334155;
+  border-radius: 2px;
+  cursor: pointer;
+  position: relative;
+}
+
+.custom-audio .progress-fill {
+  height: 100%;
+  background: var(--primary-neon);
+  width: 0%;
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.custom-audio .time-display {
+  font-size: 10px;
+  color: #94a3b8;
+  font-family: "Fira Code", monospace;
+  width: 30px;
+  text-align: right;
+}
+
+/* Видео-кружок */
+.video-note-bubble {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--primary-neon);
+  box-shadow: 0 0 18px var(--primary-glow);
+  cursor: pointer;
+}
+
+.video-note-bubble video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Адаптация медиа для телефонов */
+@media (max-width: 768px) {
+  .msg-media img,
+  .msg-media video {
+    max-width: 220px;
+    max-height: 220px;
+    border: none;
+    box-shadow: none;
+  }
+
+  .cyber-audio-wrap {
+    min-width: 200px;
+    background: rgba(0, 0, 0, 0.2);
+    border: none;
+    box-shadow: none;
+  }
+
+  .video-note-bubble {
+    width: 120px;
+    height: 120px;
+    border: none;
+    box-shadow: none;
+  }
+}
+
+/* Бар ответа (Reply) */
+#replyBar {
+  display: none;
+  background: rgba(15, 23, 42, 0.9);
+  border-top: 1px solid var(--border-neon);
+  padding: 8px 12px;
+  font-size: 11px;
+}
+
+#replyBar.active {
+  display: flex;
+}
+
+/* Подсветка поиска */
+.search-highlight {
+  background: rgba(0, 240, 255, 0.35);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.search-highlight.current {
+  background: rgba(245, 158, 11, 0.55);
+}
+
+/* Реакции (Смайлики под сообщением) */
+.reaction-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  font-size: 11px;
+  cursor: pointer;
+  margin-right: 4px;
+  margin-top: 4px;
+  transition: transform 0.1s;
+}
+
+.reaction-chip:active {
+  transform: scale(0.9);
+}
+
+.reaction-chip.mine {
+  border-color: var(--primary-neon);
+  background: rgba(0, 240, 255, 0.12);
+}
+
+/* Индикатор записи голоса */
+#recordingIndicator {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(239, 68, 68, 0.15);
+  border-top: 1px solid rgba(239, 68, 68, 0.4);
+  font-size: 12px;
+  color: #fca5a5;
+}
+
+#recordingIndicator.active {
+  display: flex;
+}
+
+.rec-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* Мобильные переходы (Экраны) */
+.view-section {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+.view-section.active {
+  display: flex;
+}
+/* Анимация появления сообщений */
+@keyframes message-appear {
+  0% {
+    opacity: 0;
+    transform: translateY(15px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.msg-animate {
+  animation: message-appear 0.3s ease-out forwards;
+}
+/* ========================================= */
+/* ГЛОБАЛЬНАЯ ЗАМЕНА ЦВЕТОВ (ПЕРЕБИВАЕМ TAILWIND) */
+/* ========================================= */
+
+/* Если тема не голубая, перекрашиваем текст */
+body.theme-emerald .text-cyan-400,
+body.theme-emerald .text-cyan-300,
+body.theme-emerald .text-cyan-500,
+body.theme-pink .text-cyan-400,
+body.theme-pink .text-cyan-300,
+body.theme-pink .text-cyan-500,
+body.theme-amber .text-cyan-400,
+body.theme-amber .text-cyan-300,
+body.theme-amber .text-cyan-500 {
+  color: var(--primary-neon) !important;
+}
+
+/* Перекрашиваем кнопки (фон) */
+body.theme-emerald .bg-cyan-500,
+body.theme-emerald .bg-cyan-400,
+body.theme-emerald .bg-cyan-600,
+body.theme-pink .bg-cyan-500,
+body.theme-pink .bg-cyan-400,
+body.theme-pink .bg-cyan-600,
+body.theme-amber .bg-cyan-500,
+body.theme-amber .bg-cyan-400,
+body.theme-amber .bg-cyan-600 {
+  background-color: var(--primary-neon) !important;
+  color: #000 !important; /* Делаем текст на ярких кнопках черным для контраста */
+}
+
+/* Перекрашиваем рамки (обводки) */
+body.theme-emerald .border-cyan-400,
+body.theme-emerald .border-cyan-500,
+body.theme-pink .border-cyan-400,
+body.theme-pink .border-cyan-500,
+body.theme-amber .border-cyan-400,
+body.theme-amber .border-cyan-500 {
+  border-color: var(--primary-neon) !important;
+}
+
+/* Перекрашиваем темные фоны (например, вкладки или поиск) */
+body.theme-emerald .bg-cyan-950,
+body.theme-emerald .bg-slate-900,
+body.theme-emerald .bg-slate-950,
+body.theme-pink .bg-cyan-950,
+body.theme-pink .bg-slate-900,
+body.theme-pink .bg-slate-950,
+body.theme-amber .bg-cyan-950,
+body.theme-amber .bg-slate-900,
+body.theme-amber .bg-slate-950 {
+  background-color: var(--bg-main) !important;
+}
+
+/* Перекрашиваем полупрозрачные элементы (свечения) */
+body.theme-emerald .bg-cyan-500\/20,
+body.theme-pink .bg-cyan-500\/20,
+body.theme-amber .bg-cyan-500\/20 {
+  background-color: var(--primary-glow) !important;
+}
+/* ========================================= */
+/* УЛЬТИМАТИВНЫЙ ФИКС ДЛЯ ВСЕХ ОТТЕНКОВ CYAN */
+/* ========================================= */
+
+/* Перекрашиваем ЛЮБОЙ текст, где есть слово cyan (300, 400, 500 и т.д.) */
+body:not(.theme-cyan) [class*="text-cyan-"] {
+  color: var(--primary-neon) !important;
+}
+
+/* Перекрашиваем ЛЮБЫЕ рамки, где есть слово cyan */
+body:not(.theme-cyan) [class*="border-cyan-"] {
+  border-color: var(--primary-neon) !important;
+}
+
+/* Перекрашиваем яркие фоны кнопок */
+body:not(.theme-cyan) .bg-cyan-500,
+body:not(.theme-cyan) .bg-cyan-400,
+body:not(.theme-cyan) .bg-cyan-600 {
+  background-color: var(--primary-neon) !important;
+  color: #000 !important; /* Черный текст для контраста на ярком фоне */
+}
+
+/* Перекрашиваем градиенты (ваша аватарка внизу слева использует градиент) */
+body:not(.theme-cyan) [class*="from-cyan-"] {
+  --tw-gradient-from: var(--primary-neon) !important;
+}
+/* Перекрашиваем кольца вокруг историй в цвет текущей темы */
+#storiesContainer [class*="border-blue-"],
+#storiesContainer [class*="border-cyan-"],
+#storiesContainer [class*="border-indigo-"],
+#storiesContainer [class*="ring-blue-"],
+#storiesContainer [class*="ring-cyan-"] {
+  border-color: var(--primary-neon) !important;
+  --tw-ring-color: var(--primary-neon) !important;
+  box-shadow: 0 0 10px var(--primary-neon) !important; /* Добавим неоновое свечение */
+}
+
+/* Красим буквы "КР" внутри кружочков */
+#storiesContainer [class*="text-blue-"],
+#storiesContainer [class*="text-cyan-"] {
+  color: var(--primary-neon) !important;
+}
+/* ========================================= */
+/* ПЕРЕКРАШИВАЕМ НИЖНЮЮ ПАНЕЛЬ И ИКОНКИ ВВОДА */
+/* ========================================= */
+
+/* Перекрашиваем текст (иконки) */
+body:not(.theme-cyan) [class*="text-blue-"],
+body:not(.theme-cyan) [class*="text-indigo-"],
+body:not(.theme-cyan) [class*="text-sky-"],
+body:not(.theme-cyan) [class*="text-slate-400"] {
+  /* Активные иконки внизу */
+  color: var(--primary-neon) !important;
+}
+
+/* Перекрашиваем фон активной вкладки в нижнем меню */
+body:not(.theme-cyan) [class*="bg-blue-"],
+body:not(.theme-cyan) [class*="bg-indigo-"],
+body:not(.theme-cyan) [class*="bg-sky-"] {
+  background-color: var(--primary-neon) !important;
+}
+
+/* Перекрашиваем SVG-иконки (если они вставлены как вектор) */
+body:not(.theme-cyan) [class*="fill-blue-"],
+body:not(.theme-cyan) [class*="fill-indigo-"],
+body:not(.theme-cyan) [class*="stroke-blue-"],
+body:not(.theme-cyan) [class*="stroke-indigo-"] {
+  fill: var(--primary-neon) !important;
+  stroke: var(--primary-neon) !important;
+}
+/* Идеальная рамка для картинок в чате */
+#messageFeed img,
+[class*="message"] img {
+  border: 2px solid var(--primary-neon) !important;
+  outline: none !important; /* Убираем внешнюю обводку */
+  box-shadow: none !important; /* УБИРАЕМ СИНИЙ ОРЕОЛ (ТЕНЬ) */
+  border-radius: 8px !important;
+}
+/* Если пузырь сообщения содержит картинку (.msg-media) */
+.msg-bubble-self:has(.msg-media) {
+  padding: 0 !important; /* Убираем отступы пузыря */
+  background: transparent !important; /* Убираем синий фон пузыря */
+  border: none !important; /* Убираем рамку пузыря, если есть */
+}
+
+/* Убираем отступы пузыря только для картинок и видео */
+.msg-bubble-self:has(img),
+.msg-bubble-self:has(video) {
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Добавляем аккуратную рамку картинкам И видео */
+.msg-bubble-self img,
+.msg-bubble-self video {
+  border: 2px solid var(--primary-neon) !important;
+  border-radius: 12px !important;
+  display: block !important;
+  width: 100% !important;
+  height: auto !important;
+}
+/* Перекрашиваем кастомный аудио-плеер в цвет темы */
+.custom-audio button,
+.custom-audio .progress-fill {
+  background-color: var(--primary-neon) !important;
+}
+
+/* Иконка Play/Pause внутри кнопки должна быть черной для контраста */
+.custom-audio button i {
+  color: #000 !important;
+}
+
+/* Текст таймера (0:00) */
+.custom-audio .time-display {
+  color: var(--primary-neon) !important;
+}
+
+/* Фон полосы прогресса делаем нейтральным (полупрозрачным) */
+.custom-audio .progress-track {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+/* Перекрашиваем кнопки Голосовой комнаты и Аркады в цвет темы */
+body:not(.theme-cyan) #openVoiceStageBtn,
+body:not(.theme-cyan) #openArcadeBtn {
+  color: var(--primary-neon) !important;
+  border-color: var(--primary-neon) !important;
+}
+
+/* Если при наведении меняется цвет рамки, тоже перекрашиваем */
+body:not(.theme-cyan) #openVoiceStageBtn:hover,
+body:not(.theme-cyan) #openArcadeBtn:hover {
+  border-color: var(--primary-neon) !important;
+  box-shadow: 0 0 8px var(--primary-neon) !important;
+}
+
+/* Красим сами иконки внутри кнопок */
+body:not(.theme-cyan) #openVoiceStageBtn i,
+body:not(.theme-cyan) #openArcadeBtn i {
+  color: var(--primary-neon) !important;
+}
+/* --- ЖЕСТКИЙ ФИКС НИЖНЕЙ ПАНЕЛИ --- */
+body:not(.theme-cyan) nav .nav-btn,
+body:not(.theme-cyan) nav .nav-btn i,
+body:not(.theme-cyan) nav .nav-btn span {
+  color: var(--primary-neon) !important;
+  fill: var(--primary-neon) !important;
+}
+
+body:not(.theme-cyan) nav .nav-btn {
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+body:not(.theme-cyan) nav .nav-btn:hover,
+body:not(.theme-cyan) nav .nav-btn.active {
+  opacity: 1 !important;
+  color: var(--primary-neon) !important;
+}
+/* Фикс для холста Матрицы на мобильных устройствах */
+#matrixCanvas {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: -10 !important; /* Уводим глубоко на задний план */
+  pointer-events: none !important; /* Клики проходят сквозь */
+  display: block !important;
+}
+
+/* Убеждаемся, что основной контейнер прозрачный */
+body,
+main,
+.main-chat-container {
+  background-color: transparent !important;
+}
+/* Делаем все кнопки в шапке идеально квадратными и одинакового размера */
+#toggleMatrixBtn,
+#openVoiceStageBtn,
+#openArcadeBtn,
+#openAiDrawerBtn #openSettingsBtn {
+  width: 40px !important; /* Фиксированная ширина */
+  height: 40px !important; /* Фиксированная высота (квадрат) */
+  padding: 0 !important; /* Убираем отступы, чтобы иконка была по центру */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* На всякий случай скрываем текст AI_CORE на телефоне, чтобы он не ломал размеры */
+@media (max-width: 768px) {
+  #openAiDrawerBtn span {
+    display: none !important;
+  }
+}
+/* Красим главный заголовок в цвет темы */
+h1 {
+  color: var(--primary-neon) !important;
+  text-shadow: 0 0 8px var(--primary-neon) !important;
+}
+/* ========================================== */
+/* АНИМАЦИЯ ДЛЯ ИНДИКАТОРА "ПЕЧАТАЕТ..." */
+/* ========================================== */
+.typing-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 2px;
+}
+
+.typing-dots span {
+  width: 4px;
+  height: 4px;
+  background-color: var(
+    --accent-primary,
+    #00f0ff
+  ); /* Используем твой неоновый цвет */
+  border-radius: 50%;
+  display: inline-block;
+  animation: typing-bounce 1.4s infinite ease-in-out both;
+}
+
+.typing-dots span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+.typing-dots span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes typing-bounce {
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.voice-player-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 240px;
+  padding: 6px 4px;
+}
+
+.voice-play-btn {
+  width: 40px; /* Сделали чуть больше */
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 240, 255, 0.15);
+  border: 1px solid var(--primary-neon, #00f0ff);
+  color: var(--primary-neon, #00f0ff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+  padding-left: 2px; /* Чтобы иконка play была ровно по центру */
+}
+
+.voice-play-btn:hover {
+  background: var(--primary-neon, #00f0ff);
+  color: #000;
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.6);
+}
+
+.voice-waveform {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 32px;
+  flex: 1;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.voice-bar {
+  width: 3px;
+  background-color: rgba(
+    255,
+    255,
+    255,
+    0.4
+  ); /* Сделали светлее, чтобы было видно */
+  border-radius: 3px;
+  transition:
+    background-color 0.1s ease,
+    box-shadow 0.1s ease;
+}
+
+.voice-bar.played {
+  background-color: var(--primary-neon, #00f0ff);
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.8);
+}
+
+.voice-waveform.voice-playing .voice-bar {
+  animation: voicePulse 0.9s ease-in-out infinite;
+}
+.voice-waveform.voice-playing .voice-bar:nth-child(3n) {
+  animation-delay: 0.15s;
+}
+.voice-waveform.voice-playing .voice-bar:nth-child(3n + 1) {
+  animation-delay: 0.3s;
+}
+
+@keyframes voicePulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.voice-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px;
+  flex-shrink: 0;
+  min-width: 40px;
+}
+
+.voice-time {
+  font-size: 12px;
+  color: #e2e8f0;
+  font-family: monospace;
+  font-weight: bold;
+}
+
+.voice-speed {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--primary-neon, #00f0ff);
+  background: rgba(0, 240, 255, 0.1);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  border-radius: 4px;
+  padding: 2px 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.voice-speed:hover {
+  background: var(--primary-neon, #00f0ff);
+  color: #000;
+}
